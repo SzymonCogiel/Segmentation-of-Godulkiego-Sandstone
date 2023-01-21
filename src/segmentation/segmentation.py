@@ -2,10 +2,10 @@ import cv2
 import pickle
 import numpy as np
 from numpy.random import seed
-import matplotlib.pyplot as plt
 from keras.models import load_model
 from scipy.ndimage import median_filter
 from skimage.morphology import remove_small_objects
+import os
 
 # set seeds
 seed(42)
@@ -26,8 +26,9 @@ class Sandstone:
     test_img = None
 
     def __init__(self, path):
+        print(os.getcwd())
         self.load_models()
-        self.load_img(path=path)
+        self.test_img = self.load_img(path=path)
 
     @staticmethod
     def load_img(path: str):
@@ -38,12 +39,13 @@ class Sandstone:
 
     # load created before models
     def load_models(self):
-        self.feature_extractor_mika = load_model("data/models/extractor_mika.h5")
-        self.feature_extractor_kwarc = load_model("data/models/extractor_kwarc.h5")
-        self.feature_extractor_glauk = load_model("data/models/extractor_glauk.h5")
-        self.mika_model = pickle.load(open('data/models/RF_model_mika.sav', 'rb'))
-        self.kwarc_model = pickle.load(open('data/models/RF_model_kwarc.sav', 'rb'))
-        self.glau_model = pickle.load(open('data/models/RF_model_glau.sav', 'rb'))
+        print()
+        self.feature_extractor_mika = load_model("rock_seg/seg_sandstone/data/models/extractor_mika.h5")
+        self.feature_extractor_kwarc = load_model("rock_seg/seg_sandstone/data/models/extractor_kwarc.h5")
+        self.feature_extractor_glauk = load_model("rock_seg/seg_sandstone/data/models/extractor_glauk.h5")
+        self.mika_model = pickle.load(open('rock_seg/seg_sandstone/data/models/RF_model_mika.sav', 'rb'))
+        self.kwarc_model = pickle.load(open('rock_seg/seg_sandstone/data/models/RF_model_kwarc.sav', 'rb'))
+        self.glau_model = pickle.load(open('rock_seg/seg_sandstone/data/models/RF_model_glau.sav', 'rb'))
 
     # extract features
     def __feature_extractors(self, feature_extractor):
@@ -62,23 +64,39 @@ class Sandstone:
         img = np.array(img, dtype=bool)
         img = remove_small_objects(img, min_size=min_size)
         img.dtype = 'uint8'
-        img = cv2.morphologyEx(img, cv2.MORPH_CLOSE, kernel)
+        if type(kernel) != bool:
+            img = cv2.morphologyEx(img, cv2.MORPH_CLOSE, kernel)
+        else:
+            img = median_filter(img, size=3)
         return img
 
     # predict minelars
     def predict(self):
 
+        """
+        :return segmented image
+        """
+
         mika_img = self.__predict_mineral(self.mika_model, self.feature_extractor_mika)
         glau_img = self.__predict_mineral(self.glau_model, self.feature_extractor_glauk)
         kwarc_img = self.__predict_mineral(self.kwarc_model, self.feature_extractor_kwarc)
 
+        kernel = np.ones((7, 7), np.uint8)
+        glau_img = cv2.morphologyEx(glau_img, cv2.MORPH_CLOSE, kernel)
+
         mika_img = self.__morphology_operations(mika_img, 120, np.ones((7, 7), np.uint8))
         glau_img = self.__morphology_operations(glau_img, 400, np.ones((9, 9), np.uint8))
+        kwarc_img = self.__morphology_operations(kwarc_img, 100, False)
 
+        mika_img[mika_img == 1] = 75
+        glau_img[glau_img == 1] = 150
+        kwarc_img[kwarc_img == 1] = 255
 
+        results = mika_img + glau_img + kwarc_img
 
+        results[results == 74] = 75
+        results[results == 149] = 150
 
+        cv2.imwrite('rock_seg/seg_sandstone/result.jpg', results)
 
-
-
-
+        return results
