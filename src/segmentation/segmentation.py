@@ -1,11 +1,12 @@
 import cv2
 import pickle
 import numpy as np
+import tensorflow as tf
 from numpy.random import seed
 from keras.models import load_model
 from scipy.ndimage import median_filter
 from skimage.morphology import remove_small_objects
-import os
+
 
 # set seeds
 seed(42)
@@ -26,29 +27,66 @@ class Sandstone:
     test_img = None
 
     def __init__(self, path):
-        print(os.getcwd())
         self.load_models()
         self.test_img = self.load_img(path=path)
 
     @staticmethod
     def load_img(path: str):
+        """"
+        :param
+            path: path to image
+        :Overview
+            Load an image and if necessary resize it
+        """
+
         test_img = cv2.imread(path, cv2.IMREAD_COLOR)
         test_img = cv2.cvtColor(test_img, cv2.COLOR_RGB2BGR)
+        if test_img.shape != (968, 1292, 3):
+            test_img = tf.image.resize(test_img, (width, height))
         test_img = np.expand_dims(test_img, axis=0)
         return test_img
 
     # load created before models
-    def load_models(self):
-        print()
-        self.feature_extractor_mika = load_model("rock_seg/seg_sandstone/data/models/extractor_mika.h5")
-        self.feature_extractor_kwarc = load_model("rock_seg/seg_sandstone/data/models/extractor_kwarc.h5")
-        self.feature_extractor_glauk = load_model("rock_seg/seg_sandstone/data/models/extractor_glauk.h5")
-        self.mika_model = pickle.load(open('rock_seg/seg_sandstone/data/models/RF_model_mika.sav', 'rb'))
-        self.kwarc_model = pickle.load(open('rock_seg/seg_sandstone/data/models/RF_model_kwarc.sav', 'rb'))
-        self.glau_model = pickle.load(open('rock_seg/seg_sandstone/data/models/RF_model_glau.sav', 'rb'))
+    def load_models(
+            self,
+            mika_ext="models/extractor_mika.h5",
+            kwarc_ext="models/extractor_kwarc.h5",
+            glauk_ext="models/extractor_glauk.h5",
+            mika_model="models/RF_model_mika.sav",
+            kwarc_model="models/RF_model_kwarc.sav",
+            glauk_model="models/RF_model_glau.sav",
+        ):
+        """
+        :param mika_ext: path to extractor
+        :param kwarc_ext: path to extractor
+        :param glauk_ext: path to extractor
+        :param mika_model: path to model
+        :param kwarc_model: path to model
+        :param glauk_model: path to model
+
+        :Overview
+            Load an image and if necessary resize it
+        """
+
+        try:
+            self.feature_extractor_mika = load_model(mika_ext)
+            self.feature_extractor_kwarc = load_model(kwarc_ext)
+            self.feature_extractor_glauk = load_model(glauk_ext)
+            self.mika_model = pickle.load(open(mika_model, 'rb'))
+            self.kwarc_model = pickle.load(open(kwarc_model, 'rb'))
+            self.glau_model = pickle.load(open(glauk_model, 'rb'))
+        except IOError as e:
+            raise e
 
     # extract features
     def __feature_extractors(self, feature_extractor):
+        """
+        :param
+            feature_extractor: model to extract features
+        :return:
+            extracted features
+        """
+
         X_test_feature = feature_extractor.predict(self.test_img)
         X_test_feature = X_test_feature.reshape(-1, X_test_feature.shape[3])
         return X_test_feature
@@ -72,7 +110,6 @@ class Sandstone:
 
     # predict minelars
     def predict(self):
-
         """
         :return segmented image
         """
@@ -97,6 +134,6 @@ class Sandstone:
         results[results == 74] = 75
         results[results == 149] = 150
 
-        cv2.imwrite('rock_seg/seg_sandstone/result.jpg', results)
+        cv2.imwrite('result.jpg', results)
 
         return results
