@@ -6,4 +6,6 @@ Class with model and morphological operations: [here](https://github.com/SzymonC
 
 Notebooks with models: [here](https://github.com/SzymonCogiel/Segmentation-of-Godulkiego-Sandstone/tree/master/notebooks)
 
-Web app based on this model: [here](https://github.com/SzymonCogiel/Techniki-internetowe)
+Web app based on this model: [here](https://github.com/SzymonCogiel/Techniki-internetowe) 
+
+Web app frondend demo: [GitHub Pages](https://szymoncogiel.github.io/Techniki-internetowe/frontend/src/common/index.html)
